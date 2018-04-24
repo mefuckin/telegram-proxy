@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"net"
+	"encoding/json"
+	"io/ioutil"
 )
 
 type IpRules struct {
@@ -35,15 +37,27 @@ func main() {
 	conf := &socks5.Config{}
 
 	if os.Getenv("SOCKS_AUTH") != "no" {
-		user := "user"
-		password := "password"
-		if os.Getenv("SOCKS_USER") != "" {
-			user = os.Getenv("SOCKS_USER")
+		var creds socks5.StaticCredentials
+		if os.Getenv("SOCKS_CREDENTIALS_FILE") != "" {
+			credsJson, err := ioutil.ReadFile(os.Getenv("SOCKS_CREDENTIALS_FILE"))
+			if err != nil {
+				panic("Could not read credentials file")
+			}
+			err = json.Unmarshal(credsJson, &creds)
+			if err != nil {
+				panic("Could not parse credentials file")
+			}
+		} else {
+			user := "user"
+			password := "password"
+			if os.Getenv("SOCKS_USER") != "" {
+				user = os.Getenv("SOCKS_USER")
+			}
+			if os.Getenv("SOCKS_PASSWORD") != "" {
+				password = os.Getenv("SOCKS_PASSWORD")
+			}
+			creds = socks5.StaticCredentials{user: password}
 		}
-		if os.Getenv("SOCKS_PASSWORD") != "" {
-			password = os.Getenv("SOCKS_PASSWORD")
-		}
-		creds := socks5.StaticCredentials{user: password}
 		cator := socks5.UserPassAuthenticator{Credentials: creds}
 		conf.AuthMethods = []socks5.Authenticator{cator}
 	}
